@@ -1,21 +1,31 @@
 package push
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"golang.org/x/net/websocket"
 )
 
 type Client struct {
-	Id        int
-	ws        *websocket.Conn
-	messageCh chan string
+	Id          float64
+	Service     string
+	ws          *websocket.Conn
+	addClinetCh chan *Client
+	rmClientCh  chan *Client
 }
 
-func NewClient(ws *websocket.Conn, message chan string) *Client {
+type Regist struct {
+	Action  string  `json:"action"`
+	UserId  float64 `json:"userId"`
+	Service string  `json:"service"`
+}
+
+func NewClient(ws *websocket.Conn, add chan *Client, rm chan *Client) *Client {
 	return &Client{
-		ws:        ws,
-		messageCh: message,
+		ws:          ws,
+		addClinetCh: add,
+		rmClientCh:  rm,
 	}
 }
 
@@ -24,16 +34,28 @@ func (client *Client) Start() {
 		var message string
 		err := websocket.Message.Receive(client.ws, &message)
 		if err != nil {
-			// remove
-
+			client.rmClientCh <- client
+			return
 		} else {
 			// json action:regist, service:collie/shuffle, user:***
 			// user regist
-			client.messageCh <- message
+			fmt.Println(message)
+
+			var a Regist
+			err := json.Unmarshal([]byte(message), &a)
+			if err != nil {
+				fmt.Println("error:", err)
+				return
+			}
+			client.Id = a.UserId
+			client.Service = a.Service
+
+			client.addClinetCh <- client
 		}
 	}
 }
 
+/** notification */
 func (client *Client) Send(message string) {
 	err := websocket.Message.Send(client.ws, message)
 	if err != nil {

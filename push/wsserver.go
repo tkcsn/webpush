@@ -7,28 +7,38 @@ import (
 )
 
 type Server struct {
-	clients     map[int]*Client
+	clients     map[float64]*Client
 	addClientCh chan *Client
-	messageCh   chan string
+	rmClientCh  chan *Client
+	MessageCh   chan *Message
 }
 
 func NewServer() *Server {
 	return &Server{
-		clients:     map[int]*Client{},
+		clients:     map[float64]*Client{},
 		addClientCh: make(chan *Client),
-		messageCh:   make(chan string),
+		rmClientCh:  make(chan *Client),
+		MessageCh:   make(chan *Message),
 	}
 }
 
 func (server *Server) addClient(client *Client) {
 	fmt.Println("client add")
-	server.clients[0] = client
+	server.clients[client.Id] = client
 }
 
-func (server *Server) sendMessage(message string) {
-	for _, client := range server.clients {
-		c := client
-		go func() { c.Send(message) }()
+func (server *Server) rmClient(client *Client) {
+	fmt.Println("client remove")
+	delete(server.clients, client.Id)
+}
+
+func (server *Server) sendMessage(message *Message) {
+	fmt.Println("send message")
+	for _, id := range message.User {
+		c, ok := server.clients[id]
+		if ok {
+			go func() { c.Send(message.Message) }()
+		}
 	}
 }
 
@@ -37,7 +47,9 @@ func (server *Server) Start() {
 		select {
 		case client := <-server.addClientCh:
 			server.addClient(client)
-		case message := <-server.messageCh:
+		case client := <-server.rmClientCh:
+			server.rmClient(client)
+		case message := <-server.MessageCh:
 			server.sendMessage(message)
 		}
 	}
@@ -45,8 +57,7 @@ func (server *Server) Start() {
 
 func (server *Server) WebsocketHandler() websocket.Handler {
 	return websocket.Handler(func(ws *websocket.Conn) {
-		client := NewClient(ws, server.messageCh)
-		server.addClientCh <- client
+		client := NewClient(ws, server.addClientCh, server.rmClientCh)
 		client.Start()
 	})
 }
