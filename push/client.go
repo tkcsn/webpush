@@ -8,7 +8,7 @@ import (
 )
 
 type Client struct {
-	Id          float64
+	Id          string
 	Service     string
 	ws          *websocket.Conn
 	addClinetCh chan *Client
@@ -16,9 +16,9 @@ type Client struct {
 }
 
 type Regist struct {
-	Action  string  `json:"action"`
-	UserId  float64 `json:"userId"`
-	Service string  `json:"service"`
+	Action  string `json:"action"`
+	UserId  string `json:"userId"`
+	Service string `json:"service"`
 }
 
 func NewClient(ws *websocket.Conn, add chan *Client, rm chan *Client) *Client {
@@ -37,7 +37,7 @@ func (client *Client) Start() {
 			client.rmClientCh <- client
 			return
 		} else {
-			// json action:regist, service:collie/shuffle, user:***
+			// json action:register, service:collie/shuffle, user:***
 			// user regist
 			fmt.Println(message)
 
@@ -47,10 +47,12 @@ func (client *Client) Start() {
 				fmt.Println("error:", err)
 				return
 			}
-			client.Id = a.UserId
-			client.Service = a.Service
+			if a.Action == "register" {
+				client.Id = a.UserId
+				client.Service = a.Service
+				client.addClinetCh <- client
+			}
 
-			client.addClinetCh <- client
 		}
 	}
 }

@@ -1,9 +1,9 @@
 package main
 
 import (
+	"log"
 	"net/http"
-
-	"github.com/tkcsn/webpush/push"
+	"webpush/push"
 )
 
 func main() {
@@ -18,9 +18,14 @@ func main() {
 
 	ht := http.NewServeMux()
 	ht.HandleFunc("/ht", htserver.Handler)
+	ht.HandleFunc("/status", htserver.HealthHandler)
+	ht.HandleFunc("/list", wsserver.ClientListHandler)
 
 	go func() {
-		http.ListenAndServe(":8248", ws)
+		err := http.ListenAndServe(":8248", ws)
+		if err != nil {
+			log.Fatal("wsserver: ", err)
+		}
 	}()
 
 	http.ListenAndServe(":8249", ht)

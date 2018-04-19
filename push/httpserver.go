@@ -11,8 +11,8 @@ type HttpServer struct {
 }
 
 type Message struct {
-	service string
-	User    []float64
+	Service string
+	User    []string
 	Message string
 }
 
@@ -32,7 +32,13 @@ func (httpserver *HttpServer) Handler(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 	fmt.Println(m.Message)
+	fmt.Println(m.Service)
 	fmt.Println(m.User)
 
 	httpserver.messageCh <- &m
+}
+
+func (httpserver *HttpServer) HealthHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(200)
+	w.Write([]byte("OK"))
 }
